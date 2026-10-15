@@ -2,8 +2,6 @@
 
 저장된 제조설비 측정 데이터를 ML로 분석하고, 기술문서 Evidence를 이용해 진단·점검·조치 권고까지 연결하는 **Evidence-grounded AI Agent MVP**입니다.
 
-**Team: Codyssey AI Factory**
-
 > 현재 입력은 Paderborn의 저장 Measurement Replay입니다. 실제 공장 센서의 연속 수집이나 PLC 자동제어 기능은 포함하지 않습니다.
 
 ![통합 관제 화면](artifacts/ui/agent_office/integrated_control_20261002.png)
@@ -12,6 +10,38 @@
 https://factory.aipath.kr
 
 > 심사 및 검증을 위한 외부 접속 주소입니다.
+
+## Final Deliverables | 최종 제출 산출물
+
+AI Native Final Project의 공식 제출 산출물입니다.
+
+| 번호 | 제출 산출물 | 내용 | 링크 |
+|---|---|---|---|
+| ① | 프로젝트 기획서 | 문제 정의, 목표, AI 활용 방식 및 추진 계획 | [기획서](docs/01_프로젝트_기획서.md) |
+| ② | 기능 요구 명세서 | 기능·비기능 요구사항, 시스템 아키텍처, AI 활용 명세 및 RTM | [요구 명세서](docs/02_기능_요구_명세서.md) |
+| ③ | 배포 URL | 실제 서비스 접속 및 기능 시연 | [Live Demo](https://factory.aipath.kr) |
+| ④ | GitHub 저장소 URL | 소스코드, 구현 구조 및 개발 결과 | [현재 저장소](./) |
+| ⑤ | 사용자 피드백 기록 | Google Forms 설문 분석 및 피드백 기반 UI 개선 결과 | [피드백 기록](docs/03_사용자_피드백_기록.md) |
+| ⑥ | 서면 심사용 발표자료 | 프로젝트 주요 성과와 AI 기술 활용 및 사용자 검증 결과 | [발표자료 PDF](docs/04_최종_발표자료.pdf) |
+| ⑦ | 시연영상 | 주요 기능과 Agent Workflow 시연(3분 이내) | [시연영상 MP4](docs/05_시연영상.mp4) |
+
+### 평가자 안내
+
+- **서비스 접속:** [Live Demo](https://factory.aipath.kr)
+- **프로젝트 문서:** 기획서, 기능 요구 명세서, 사용자 피드백 기록
+- **서면 심사:** 최종 발표자료 PDF
+- **기능 시연:** 3분 이내 시연영상
+- **소스코드:** [현재 GitHub 저장소](./)
+
+평가용 계정 정보는 보안을 위해 별도로 제공하며,
+GitHub 저장소에는 공개하지 않습니다.
+
+본 시스템은 저장된 Paderborn Measurement를 기반으로
+ML 이상탐지, RAG 기술문서 검색, LangGraph 진단 Workflow,
+HITL 검토 및 최종 보고서 생성을 지원하는 MVP입니다.
+실시간 현장 센서 수집과 자동 설비 제어는 포함하지 않습니다.
+
+> **링크 확인 안내:** 위 링크 대상의 실제 GitHub 존재 여부는 검증하지 않았습니다.
 
 ## 1. Problem
 
