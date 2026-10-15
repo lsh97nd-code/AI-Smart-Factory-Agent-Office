@@ -4,7 +4,7 @@
 
 > 현재 입력은 Paderborn의 저장 Measurement Replay입니다. 실제 공장 센서의 연속 수집이나 PLC 자동제어 기능은 포함하지 않습니다.
 
-![통합 관제 화면](artifacts/ui/agent_office/integrated_control_20261002.png)
+![현재 통합 관제 화면 · 진단 대기 상태](artifacts/ui/agent_office/integrated_control_20261016.png)
 
 ### Live Demo
 https://factory.aipath.kr
@@ -356,15 +356,14 @@ npm run lint
 npm run build
 ```
 
-2026-10-05 현재 검증 결과:
+2026-10-16 자동 검증 결과:
 
 - Backend: 162 passed
-- Frontend: 28 passed
+- Frontend: 33 passed
 - TypeScript: passed
 - Next.js production build: passed, 7 routes
-- Runtime A/B/C: 모두 `COMPLETED`, Final Report 복원 가능
 
-세부 증빙은 [TEST_RESULTS.md](docs/competition/TEST_RESULTS.md)를 참조합니다.
+2026-10-05 시나리오 검증 기록: Runtime A/B/C 모두 `COMPLETED`, Final Report 복원 가능. 세부 증빙은 [TEST_RESULTS.md](docs/competition/TEST_RESULTS.md)를 참조합니다.
 
 ## 19. Known Limitations
 
