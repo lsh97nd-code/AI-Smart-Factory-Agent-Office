@@ -14,6 +14,8 @@ Bearing의 정상·이상 상태를 판별합니다. ML이 Bearing에 이상이 
 추출한 36개 특징값입니다. 현재는 실제 공장 Sensor에서 진동·전류·회전속도·토크(Torque)
 등의 상태 Data를 실시간으로 수집·수신하지 않습니다.
 
+![현재 통합 관제 화면 · 진단 대기 상태](artifacts/ui/agent_office/integrated_control_20261016.png)
+
 ### Service 시연(Live Demo)
 
 [https://factory.aipath.kr](https://factory.aipath.kr)
@@ -318,16 +320,17 @@ Paderborn 데이터 변환기와 ML 분석 API, `bearing_v1` 지식 색인,
 Agent Office UI, 설비별 장기 이력, 선택형 관찰 전용 다중 모달 점검 기능이 포함됩니다.
 
 ```mermaid
-flowchart LR
-    S[저장된 측정 Data] --> M[Random Forest 분류]
-    M --> G[LangGraph 작업 흐름]
-    G <--> R[기술 자료 RAG]
-    G <--> H[설비 이력]
-    G <--> V[선택형 이미지 관찰]
-    G --> W[작업자 판단(HITL)] --> G
-    G --> P[점검 계획 / 조치 방법 제안 / 최종 보고서 생성]
-    P --> E[AgentEvent / SSE]
-    E --> U[Agent Office]
+flowchart TD
+    S["저장된 측정 Data"] --> M["Random Forest 분류"]
+    M --> G["LangGraph 작업 흐름"]
+    G <--> R["기술 자료 RAG"]
+    G <--> H["설비 이력"]
+    G <--> V["선택형 이미지 관찰"]
+    G --> W["작업자 판단 (HITL)"]
+    W --> G
+    G --> P["점검 계획 / 조치 방법 제안 / 최종 보고서 생성"]
+    P --> E["AgentEvent / SSE"]
+    E --> U["Agent Office"]
 ```
 
 각 정보의 기준이 되는 저장·전달 객체는 측정 Data 변환기,
