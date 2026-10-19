@@ -31,45 +31,38 @@
 
 # 2. 프로젝트 한 줄 정의
 
-> 제조설비 센서 데이터를 ML/DL로 분석하고, 기술문서 RAG를 근거로
-> LangGraph AI Agent가 이상 원인 후보를 검토하고 점검·조치안을 생성하며,
-> 전체 실행 과정을 AI Smart Factory Agent Office에서 실시간으로
-> 시각화하는 서비스.
+> 저장된 Paderborn University Data Center의 Bearing 측정 Data를 Random Forest로
+> 정상·이상 판별하고, 이상 시 RAG 검색 → 근거가 충분한지 확인 → 원인 진단 →
+> 점검 계획 수립 → 조치 방법 제안 → 필요 시 작업자 판단으로 연결한다.
 
 ------------------------------------------------------------------------
 
 # 3. 핵심 End-to-End Flow
 
 ``` text
-Sensor Dataset
+저장된 Bearing 측정 Data
     ↓
-Data Adapter
+저장 신호 재연(Replay)
     ↓
-Preprocessing / Feature Extraction
-    ↓
-ML/DL Detection
-    ↓
-Standard Analysis Result
-    ↓
-LangGraph
-    ↓
-RAG Retrieval
-    ↓
-Diagnosis Candidate
-    ↓
-Evidence Verification
-    ↓
-Conditional Branch / Retry
-    ↓
-Inspection Plan
-    ↓
-Recommended Action
-    ↓
-Final Report
-    ↓
-Agent Event
-    ↓
-AI Smart Factory Agent Office
+Random Forest 정상·이상 판별
+    ├─ 정상: RAG 및 후속 이상 진단 생략 → 정상 보고서 생성
+    └─ 이상: RAG로 관련 기술문서 검색
+          ↓
+      AI Agent가 근거가 충분한지 확인
+          ↓
+      이상 원인 진단
+          ↓
+      점검 계획 수립
+          ↓
+      작업자에게 조치 방법 제안
+          ↓
+      필요 시 작업자 판단(HITL)
+          ↓
+      중단된 지점부터 작업을 다시 시작
+          ↓
+      최종 보고서 생성
+          ↓
+      Workflow 상태를 Agent Office에 표시
 ```
 
 이 E2E 흐름을 기준으로 구현 우선순위를 판단한다.
@@ -103,17 +96,26 @@ docs/
 
 설계 충돌이 발견되면 임의로 결정하지 않는다.
 
-우선순위:
+현재 기준 문서와 개발 참고 문서를 구분한다.
+
+현재 기준 문서:
 
 ``` text
-현재 STEP 작업 계획
-    ↓
-10_DEVELOPMENT_GUIDE.md
-    ↓
-세부 설계 문서 02~08
-    ↓
-01_PROJECT_OVERVIEW.md
+기능 요구 명세서
+발표 Script
+README
+Project Overview
 ```
+
+개발 참고 문서:
+
+``` text
+10_DEVELOPMENT_GUIDE.md
+세부 설계 문서 02~08
+```
+
+기준 문서의 사실·용어와 Development Guide의 개발 절차가 충돌하면,
+충돌 내용을 보고한 뒤 현재 기준 문서를 우선해 정리한다.
 
 명백한 충돌이나 구현 불가능성이 있으면 변경 전 보고한다.
 
@@ -176,7 +178,7 @@ Rolling Bearing Condition Monitoring
 초기 Reference Dataset:
 
 ``` text
-Paderborn University Bearing DataCenter
+Paderborn University Data Center의 저장된 Bearing 측정 Data
 ```
 
 단, 전체 Architecture는 특정 Dataset에 종속되지 않아야 한다.
@@ -239,41 +241,59 @@ FastAPI
 Pydantic
 ```
 
-### ML/DL
+### 현재 MVP ML
 
 ``` text
 pandas
 NumPy
 SciPy
 scikit-learn
-PyTorch 또는 TensorFlow
+Random Forest
 ```
 
-DL Framework는 실제 기존 환경과 팀 선택을 확인한 뒤 하나를 사용한다.
+### 향후 ML/DL
+
+``` text
+DL Framework (PyTorch 또는 TensorFlow)
+```
 
 ### Agent
 
 ``` text
 LangChain
 LangGraph
-OpenAI GPT API
 ```
 
-### RAG
+LangChain은 실제 코드에서 사용되고 있으며, LangGraph Workflow와 함께
+Agent 실행을 구성한다.
+
+OpenAI GPT API는 실제 핵심 경로 사용 여부를 확인한 뒤 현재 Stack 또는
+선택 기능으로 표시한다.
+
+### 현재 RAG
 
 ``` text
-Embedding
-Vector DB
-Chroma 또는 Qdrant
+HashingVectorizer (384차원 단어 특징 Vector)
+Chroma (collection: bearing_v1)
 ```
 
-초기 MVP에서는 하나만 선택한다.
-
-### Application DB
+### 향후 RAG
 
 ``` text
-SQLite → Prototype
-PostgreSQL → Final
+Semantic Embedding
+Qdrant
+```
+
+### 현재 Application DB
+
+``` text
+SQLite
+```
+
+### 향후 Application DB
+
+``` text
+PostgreSQL
 ```
 
 기존 Repository 또는 배포환경이 이미 결정되어 있으면 먼저 분석하고
@@ -462,6 +482,10 @@ class SensorDatasetAdapter:
 
 Paderborn 전용 파일 파싱은 Adapter 내부로 제한한다.
 
+현재 Paderborn 입력은 저장된 측정 Data를 읽는 Data Adapter이며,
+실시간 Sensor Adapter가 아니다. 저장 신호 재연(Replay)은 이 Adapter가
+불러온 측정 신호를 시간 순서대로 처리하는 방식이다.
+
 ------------------------------------------------------------------------
 
 # 17. AnalysisResult
@@ -543,28 +567,30 @@ load_sensor_data
 run_detection
   ↓
 check_detection_result
-  ├── NORMAL → normal_report → END
+  ├── NORMAL → RAG·후속 이상 진단 생략 → normal_report → END
   │
   └── ABNORMAL
           ↓
       build_rag_query
           ↓
-      retrieve_knowledge
+      retrieve_knowledge(관련 기술문서 검색)
           ↓
-      diagnose
-          ↓
-      verify_evidence
+      verify_evidence(근거가 충분한지 확인)
           ├── SUFFICIENT
           │      ↓
-          │   inspection
+          │   diagnose(이상 원인 진단)
           │      ↓
-          │   action
+          │   inspection(점검 계획)
           │      ↓
-          │   report
+          │   action(조치 방법 제안)
           │      ↓
-          │     END
+          │   필요 시 human-in-the-loop
+          │      ↓
+          │   중단된 지점부터 재개
+          │      ↓
+          │   report → AgentEvent 기록 → END
           │
-          ├── PARTIAL → refine_query → retrieve
+          ├── PARTIAL → refine_query → retrieve_knowledge → verify_evidence
           │
           └── INSUFFICIENT → limited/human path
 ```
@@ -641,13 +667,14 @@ Data Profiling
 → Feature Extraction
 → Random Forest Baseline
 → Evaluation
-→ 1D CNN
-→ Compare
 ```
 
-필요 시 이후:
+현재 MVP는 Random Forest를 사용한다. 필요 시 이후:
 
 ``` text
+1D CNN
+→ Compare
+
 Isolation Forest
 Autoencoder
 ```
@@ -661,19 +688,13 @@ Autoencoder
 Train/Test Split에서:
 
 ``` text
-same bearing
-same measurement windows
+현재: Group Split by Measurement Data ID
+향후: Bearing ID holdout
 ```
 
-가 섞이는지 확인한다.
-
-가능하면:
-
-``` text
-Group Split by Bearing ID
-```
-
-를 사용한다.
+현재는 측정 Data ID 단위로 그룹을 분할하여 Data 누수를 방지한다.
+향후 보지 못한 Bearing의 일반화 검증은 Bearing ID holdout 방식으로
+별도 수행한다.
 
 Split 방식은 코드와 평가 결과에 기록한다.
 
@@ -702,14 +723,14 @@ UI는 다음 정보를 우선한다.
 
 ``` text
 Equipment Status
-Sensor Signal
+기록된 측정 신호
 ML Result
 Current Agent
 Current LangGraph Node
 Evidence
-Diagnosis
-Inspection
-Recommended Action
+이상 원인 진단
+점검 계획
+조치 방법 제안
 Timeline
 ```
 
@@ -740,13 +761,15 @@ Backend Event
 
 # 29. SSE 우선
 
-초기 실시간 상태는 SSE를 사용한다.
+SSE(Server-Sent Events)는 서버가 처리 과정의 상태를 브라우저에
+전달하는 방식이다. SSE는 Sensor Streaming이 아니라 Backend의
+AgentEvent를 통해 Workflow 상태를 전달한다.
 
 ``` text
 FastAPI
 → AgentEvent
 → SSE
-→ React
+→ React / Agent Office
 ```
 
 WebSocket은 양방향 실시간 요구가 명확해질 때만 검토한다.
@@ -764,15 +787,28 @@ Base:
 핵심:
 
 ``` text
-GET  /equipment
-GET  /measurements
-POST /analysis
-POST /agent/runs
-GET  /agent/runs/{run_id}
-GET  /agent/runs/{run_id}/events/stream
-GET  /agent/runs/{run_id}/evidence
-GET  /agent/runs/{run_id}/report
+GET  /api/v1/health
+GET  /api/v1/ready
+POST /api/v1/analysis
+POST /api/v1/knowledge/search
+
+POST /api/v1/agent/runs
+GET  /api/v1/agent/runs/{run_id}
+GET  /api/v1/agent/runs/{run_id}/events
+GET  /api/v1/agent/runs/{run_id}/events/stream?after_sequence=0
+POST /api/v1/agent/runs/{run_id}/human-input
+GET  /api/v1/agent/runs/{run_id}/report
+GET  /api/v1/agent/runs/{run_id}/evidence
+
+GET  /api/v1/measurements/{measurement_id}/preview
+GET  /api/v1/equipment/{equipment_id}/history
+GET  /api/v1/equipment/{equipment_id}/memory
+POST /api/v1/equipment/{equipment_id}/maintenance
 ```
+
+API 계약은 `lsh97nd` 저장소의 현재 구현과 관련 설계 문서의 실제
+등록 경로를 기준으로 확인한다. 문서에만 존재하는 예시 경로를
+실제 구현 경로로 간주하지 않는다.
 
 실제 Route naming은 기존 프로젝트와 충돌이 없는지 확인한다.
 
@@ -792,6 +828,10 @@ agent run
 evidence
 events
 final report
+checkpoint
+human request / response
+equipment memory
+workflow_version
 ```
 
 Raw Signal, PDF, Model Artifact를 무조건 DB BLOB로 넣지 않는다.
@@ -808,6 +848,10 @@ Raw Signal, PDF, Model Artifact를 무조건 DB BLOB로 넣지 않는다.
 어떤 Knowledge Pack?
 어떤 Evidence?
 어떤 Agent Run?
+어떤 Checkpoint?
+어떤 작업자 요청·응답?
+어떤 Equipment Memory?
+어떤 workflow_version?
 언제 실행?
 ```
 
@@ -835,7 +879,7 @@ Raw Signal, PDF, Model Artifact를 무조건 DB BLOB로 넣지 않는다.
 예:
 
 ``` text
-OPENAI_API_KEY
+OPENAI_API_KEY (선택: 실제 핵심 경로 사용 시)
 DATABASE_URL
 VECTOR_DB_PATH / URL
 DATASET_ROOT
@@ -888,6 +932,10 @@ Abnormal + Partial + Retry
 Insufficient
 Retry Limit
 Tool Error
+HITL 승인
+HITL 수정 요청
+HITL 거절
+Checkpoint Resume
 ```
 
 ------------------------------------------------------------------------
@@ -900,6 +948,7 @@ Metadata filter
 Empty retrieval
 Citation mapping
 Unsupported claim
+Hit@5 / MRR 평가
 ```
 
 ------------------------------------------------------------------------
@@ -913,6 +962,9 @@ Unknown ID
 Agent run
 Event sequence
 Report retrieval
+human-input
+Run history retrieval
+Equipment Memory retrieval
 ```
 
 ------------------------------------------------------------------------
@@ -956,10 +1008,10 @@ YES / NO
 PASS
 FAIL
 BLOCKED
-NOT TESTED
+NOT RUN
 ```
 
-`NOT TESTED`는 `PASS`가 아니다.
+`NOT RUN`은 `PASS`가 아니다.
 
 ------------------------------------------------------------------------
 
@@ -1032,11 +1084,11 @@ feat(rag): add evidence metadata schema
 최종 결과는:
 
 ``` text
-Possible Cause
-Evidence
-Inspection Recommendation
-Recommended Action
-Limitation
+이상 원인 진단
+근거 자료
+점검 계획
+조치 방법 제안
+제한 사항
 ```
 
 구조를 사용한다.
@@ -1116,32 +1168,38 @@ Diagnosis
 Evidence Verification
 Retry
 Final Report
-Agent Event
+AgentEvent
 SSE
 Basic Agent Office
 E2E
+Human-in-the-loop
+Checkpoint Resume
 ```
 
 ## P1
 
 ``` text
-1D CNN
-Human-in-the-loop
+Equipment Memory
+선택 이미지 관찰
 RAG Evaluation UI
 Advanced Agent Animation
-PostgreSQL
 Deployment hardening
 ```
 
 ## P2
 
 ``` text
+KAMP CNC Adapter + RAG 확장 검증
+1D CNN
+PostgreSQL
 Multimodal
 Long-term Memory
 Maintenance Workflow Automation
 Multi-Agent
 Advanced Isometric Graphics
 ```
+
+KAMP 확장 검증은 핵심 P0와 분리된 별도 검증으로 관리한다.
 
 ------------------------------------------------------------------------
 
@@ -1228,31 +1286,31 @@ Interface의 Breaking Change
 프로젝트가 완료되었다고 판단하려면 최소 다음 E2E가 실제로 동작해야 한다.
 
 ``` text
-사용자가 Measurement 선택
+저장된 Paderborn Bearing 측정 Data 선택
         ↓
-실제 센서 데이터 로드
+저장 신호 재연(Replay)
         ↓
-실제 ML/DL 모델 추론
-        ↓
-이상 판단
-        ↓
-실제 Vector DB RAG 검색
-        ↓
-실제 Evidence 확보
-        ↓
-LangGraph 진단
-        ↓
-근거 검증
-        ↓
-필요 시 재검색
-        ↓
-점검/조치안
-        ↓
-Citation 포함 Report
-        ↓
-Agent Event
-        ↓
-Agent Office 실시간 표현
+Random Forest로 Bearing 정상·이상 판별
+        ├─ 정상 → RAG 및 후속 이상 진단 생략 → 정상 보고서 생성
+        └─ 이상 → RAG로 기술문서 검색
+                    ↓
+                근거가 충분한지 확인
+                    ↓
+                이상 원인 진단
+                    ↓
+                점검 계획 수립
+                    ↓
+                작업자에게 조치 방법 제안
+                    ↓
+                필요 시 작업자 판단(HITL)
+                    ↓
+                중단된 지점부터 작업 재개
+                    ↓
+                최종 보고서 생성
+                    ↓
+                AgentEvent 기록
+                    ↓
+                Agent Office에 Workflow 상태 표시
 ```
 
 ------------------------------------------------------------------------
@@ -1268,20 +1326,21 @@ Agent Office 실시간 표현
 그 답은 항상 다음에서 찾을 수 있어야 한다.
 
 ``` text
-Sensor Data
+저장된 측정 Data
 Model Result
 Retrieved Evidence
 Graph State
 Conditional Route
-Agent Event
+AgentEvent
 Final Report
 ```
 
 ------------------------------------------------------------------------
 
-# 57. 초기 개발 단계
+# 57. 초기 개발 단계(계획)
 
 첫 번째 개발 단계는 프로젝트 기본 구조를 확정하는 작업이다.
+이 절은 현재 구현 완료 상태가 아니라 초기 개발 순서를 기록한 계획이다.
 
 목표:
 
