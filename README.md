@@ -20,7 +20,7 @@ Bearing의 정상·이상 상태를 판별합니다. ML이 Bearing에 이상이 
 
 [https://factory.aipath.kr](https://factory.aipath.kr)
 
-> 심사 및 검증을 위한 외부 접속 주소입니다.
+> 전문가 평가 및 검증을 위한 외부 접속 주소입니다.
 
 ## 빠른 탐색
 
@@ -2901,7 +2901,7 @@ artifacts/final/
 
 ### Smoke Test란?
 
-`Smoke Test`는 흡연과 관계없는 Software Test 용어입니다.
+`Smoke Test`는 Software Test 용어입니다.
 
 쉽게 말하면,
 
